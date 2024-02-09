@@ -32,8 +32,18 @@ export const getGradientById = asyncHandler(async (req, res) => {
  ******************************************************/
 
 export const getAllGradients = asyncHandler(async (req, res) => {
-  const gradients = await Gradient.find({}).sort({ updatedAt: "desc" });
-  res.status(200).json({ sucess: true, gradients });
+  const pageNumber = Number(req.query.page);
+  const itemsPerPage = 12;
+  const offset = pageNumber > 0 && (pageNumber - 1) * itemsPerPage;
+  const gradients = await Gradient.find({})
+    .sort({ updatedAt: "desc" })
+    .skip(offset)
+    .limit(itemsPerPage);
+  const count = await Gradient.count();
+  const pageCount = Math.ceil(count / itemsPerPage);
+  res
+    .status(200)
+    .json({ sucess: true, gradients, page: pageNumber, count, pageCount });
 });
 
 /******************************************************
