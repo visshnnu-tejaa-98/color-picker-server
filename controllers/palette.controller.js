@@ -32,8 +32,18 @@ export const getPaletteById = asyncHandler(async (req, res) => {
  ******************************************************/
 
 export const getAllPalette = asyncHandler(async (req, res) => {
-  const palette = await Palette.find({}).sort({ updatedAt: "desc" });
-  res.status(200).json({ sucess: true, palette });
+  const pageNumber = Number(req.query.page);
+  const itemsPerPage = 12;
+  const offset = pageNumber > 0 && (pageNumber - 1) * itemsPerPage;
+  const palette = await Palette.find({})
+    .sort({ updatedAt: "desc" })
+    .skip(offset)
+    .limit(itemsPerPage);
+  const count = await Palette.count();
+  const pageCount = Math.ceil(count / itemsPerPage);
+  res
+    .status(200)
+    .json({ sucess: true, palette, page: pageNumber, count, pageCount });
 });
 
 /******************************************************
@@ -43,11 +53,20 @@ export const getAllPalette = asyncHandler(async (req, res) => {
  * @returns List of all palette by user
  ******************************************************/
 export const getPaletteByUser = asyncHandler(async (req, res) => {
-  // console.log(req.user);
-  const palette = await Palette.find({ userId: req.user._id }).sort({
-    updatedAt: "desc",
-  });
-  res.status(200).json({ sucess: true, palette });
+  const pageNumber = Number(req.query.page);
+  const itemsPerPage = 12;
+  const offset = pageNumber > 0 && (pageNumber - 1) * itemsPerPage;
+  const palette = await Palette.find({ userId: req.user._id })
+    .sort({
+      updatedAt: "desc",
+    })
+    .skip(offset)
+    .limit(itemsPerPage);
+  const count = await Palette.count();
+  const pageCount = Math.ceil(count / itemsPerPage);
+  res
+    .status(200)
+    .json({ sucess: true, palette, page: pageNumber, count, pageCount });
 });
 
 /******************************************************
