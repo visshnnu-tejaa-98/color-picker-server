@@ -33,13 +33,21 @@ export const getGradientById = asyncHandler(async (req, res) => {
 
 export const getAllGradients = asyncHandler(async (req, res) => {
   const pageNumber = Number(req.query.page);
+  const gradientType = Number(req.query.type); // Only 2 options 2 and 3
   const itemsPerPage = 12;
   const offset = pageNumber > 0 && (pageNumber - 1) * itemsPerPage;
-  const gradients = await Gradient.find({})
+  if (gradientType != 2 && gradientType != 3) {
+    res
+      .status(400)
+      .json({ sucess: false, message: "Please Provide gradient Type" });
+  }
+  const gradients = await Gradient.find({ colors: { $size: gradientType } })
     .sort({ updatedAt: "desc" })
     .skip(offset)
     .limit(itemsPerPage);
-  const count = await Gradient.count();
+  const count = await Gradient.find({
+    colors: { $size: gradientType },
+  }).count();
   const pageCount = Math.ceil(count / itemsPerPage);
   res
     .status(200)
