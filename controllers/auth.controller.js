@@ -1,6 +1,8 @@
 import User from "../models/user.schema.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import CustomError from "../utils/CustomError.js";
+import { sendEMailToUser } from "../utils/nodemailer/index.js";
+import { resetPasswordEmail } from "../utils/nodemailer/resetPasswordEmail.js";
 
 export const cookieOptions = {
   expires: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
@@ -67,4 +69,46 @@ export const logout = asyncHandler(async (req, res) => {
   res
     .status(200)
     .json({ success: true, message: "User Logged out Sucessfully" });
+});
+
+/******************************************************
+ * @Forgot Password
+ * @route http://localhost:9000/api/v1/auth/forgot
+ * @description User forgot controller when user forgot password - used to fire an email to rest password
+ * @returns status message
+ ******************************************************/
+
+export const forgot = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    throw new CustomError("Please Fill all required Fields", 400);
+  }
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new CustomError(
+      "User not found, Try Signing up to our application",
+      404
+    );
+  }
+  const forgotPasswordToken = Date.now().toString();
+  const resetLink = `${process.env.FE_ORIGIN}/reset/${forgotPasswordToken}`;
+  console.log({ resetLink });
+  await User.updateOne(
+    { email: user.email },
+    { forgotPasswordToken: forgotPasswordToken }
+  );
+  console.log({ user });
+  const options = {
+    name: "UI-Color-Picker",
+    address: process.env.EMAIL,
+    recieverEmail: user.email,
+    subject: "Testing for Node Mailer",
+    html: resetPasswordEmail(user.name, resetLink),
+  };
+  const emailStatus = sendEMailToUser(options);
+  if (emailStatus) {
+    res.status(200).json({ success: true, message: "Mail Sent" });
+  } else {
+    res.status(400).json({ success: false, message: "Something went wrong!" });
+  }
 });
