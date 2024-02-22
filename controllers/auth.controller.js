@@ -81,7 +81,7 @@ export const logout = asyncHandler(async (req, res) => {
 export const forgot = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) {
-    throw new CustomError("Please Fill all required Fields", 400);
+    throw new CustomError("Please Enter Email", 400);
   }
   const user = await User.findOne({ email });
   if (!user) {
@@ -91,8 +91,7 @@ export const forgot = asyncHandler(async (req, res) => {
     );
   }
   const forgotPasswordToken = Date.now().toString();
-  const resetLink = `${process.env.FE_ORIGIN}/reset/${forgotPasswordToken}`;
-  console.log({ resetLink });
+  const resetLink = `${process.env.FE_ORIGIN}/reset?token=${forgotPasswordToken}`;
   await User.updateOne(
     { email: user.email },
     { forgotPasswordToken: forgotPasswordToken }
@@ -106,7 +105,9 @@ export const forgot = asyncHandler(async (req, res) => {
   };
   const emailStatus = sendEMailToUser(options);
   if (emailStatus) {
-    res.status(200).json({ success: true, message: "Mail Sent" });
+    res
+      .status(200)
+      .json({ success: true, message: "Mail Sent, Please Check Your Inbox" });
   } else {
     throw new CustomError("Something went wrong!, please try again", 400);
   }
@@ -122,21 +123,16 @@ export const forgot = asyncHandler(async (req, res) => {
 export const reset = asyncHandler(async (req, res) => {
   const { token } = req.query;
   const { email, password } = req.body;
-  console.log({ email, password });
-  if (!email) throw new CustomError("Please Fill all required Fields", 400);
 
   if (!token) throw new CustomError("Token Not passed, Please Try again", 400);
-
   if (!password)
     throw new CustomError("Password Required, Please Enter Password", 400);
-
   if (password.length < 8)
     throw new CustomError("Password must be atleast 8 Characters", 400);
-
   if (password.length > 20)
     throw new CustomError("Password must be less than 20 Characters", 400);
 
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ forgotPasswordToken: token });
   if (!user) {
     throw new CustomError(
       "User not found, Try Signing up to our application",
@@ -147,7 +143,7 @@ export const reset = asyncHandler(async (req, res) => {
     throw new CustomError("Token Mismatch, Please Try Again!", 400);
   }
   await User.updateOne(
-    { email },
+    { forgotPasswordToken: token },
     { password, $unset: { forgotPasswordToken: 1 } }
   );
   let JWTtoken = user.getJWTToken();
