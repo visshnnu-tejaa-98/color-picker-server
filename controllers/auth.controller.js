@@ -1,6 +1,8 @@
 import User from "../models/user.schema.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import CustomError from "../utils/CustomError.js";
+import { sendEMailToUser } from "../utils/nodemailer/index.js";
+import { resetPasswordEmail } from "../utils/nodemailer/resetPasswordEmail.js";
 
 export const cookieOptions = {
   expires: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
@@ -67,4 +69,89 @@ export const logout = asyncHandler(async (req, res) => {
   res
     .status(200)
     .json({ success: true, message: "User Logged out Sucessfully" });
+});
+
+/******************************************************
+ * @Forgot Password
+ * @route http://localhost:9000/api/v1/auth/forgot
+ * @description User forgot controller when user forgot password - used to fire an email to rest password
+ * @returns status message
+ ******************************************************/
+
+export const forgot = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    throw new CustomError("Please Enter Email", 400);
+  }
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new CustomError(
+      "User not found, Try Signing up to our application",
+      404
+    );
+  }
+  const forgotPasswordToken = Date.now().toString();
+  const resetLink = `${process.env.FE_ORIGIN}/reset?token=${forgotPasswordToken}`;
+  await User.updateOne(
+    { email: user.email },
+    { forgotPasswordToken: forgotPasswordToken }
+  );
+  const options = {
+    name: "UI-Color-Picker",
+    address: process.env.EMAIL,
+    recieverEmail: user.email,
+    subject: "Reset Password",
+    html: resetPasswordEmail(user.name, resetLink),
+  };
+  const emailStatus = sendEMailToUser(options);
+  if (emailStatus) {
+    res
+      .status(200)
+      .json({ success: true, message: "Mail Sent, Please Check Your Inbox" });
+  } else {
+    throw new CustomError("Something went wrong!, please try again", 400);
+  }
+});
+
+/******************************************************
+ * @Reset Password
+ * @route http://localhost:9000/api/v1/auth/reset
+ * @description To reset the password while user forgot the password
+ * @returns status message
+ ******************************************************/
+
+export const reset = asyncHandler(async (req, res) => {
+  const { token } = req.query;
+  const { email, password } = req.body;
+
+  if (!token) throw new CustomError("Token Not passed, Please Try again", 400);
+  if (!password)
+    throw new CustomError("Password Required, Please Enter Password", 400);
+  if (password.length < 8)
+    throw new CustomError("Password must be atleast 8 Characters", 400);
+  if (password.length > 20)
+    throw new CustomError("Password must be less than 20 Characters", 400);
+
+  const user = await User.findOne({ forgotPasswordToken: token });
+  if (!user) {
+    throw new CustomError(
+      "User not found, Try Signing up to our application",
+      404
+    );
+  }
+  if (user?.forgotPasswordToken !== token) {
+    throw new CustomError("Token Mismatch, Please Try Again!", 400);
+  }
+  await User.updateOne(
+    { forgotPasswordToken: token },
+    { password, $unset: { forgotPasswordToken: 1 } }
+  );
+  let JWTtoken = user.getJWTToken();
+  user.password = undefined;
+  res.cookie("token", token, cookieOptions);
+  res.status(200).json({
+    success: true,
+    user,
+    JWTtoken,
+  });
 });
