@@ -1,7 +1,13 @@
 import User from "../models/user.schema.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import {
+  APPLICATION_NAME,
+  LOGIN_OTP_SUBJECT,
+  RESET_PASSWORD_SUBJECT,
+} from "../utils/constants.js";
 import CustomError from "../utils/CustomError.js";
 import { sendEMailToUser } from "../utils/nodemailer/index.js";
+import { otpLoginEmail } from "../utils/nodemailer/otpLoginEmail.js";
 import { resetPasswordEmail } from "../utils/nodemailer/resetPasswordEmail.js";
 
 export const cookieOptions = {
@@ -97,10 +103,10 @@ export const forgot = asyncHandler(async (req, res) => {
     { forgotPasswordToken: forgotPasswordToken }
   );
   const options = {
-    name: "UI-Color-Picker",
+    name: APPLICATION_NAME,
     address: process.env.EMAIL,
     recieverEmail: user.email,
-    subject: "Reset Password",
+    subject: RESET_PASSWORD_SUBJECT,
     html: resetPasswordEmail(user.name, resetLink),
   };
   const emailStatus = sendEMailToUser(options);
@@ -154,4 +160,68 @@ export const reset = asyncHandler(async (req, res) => {
     user,
     JWTtoken,
   });
+});
+
+/******************************************************
+ * @Login OTP Request
+ * @route http://localhost:9000/api/v1/auth/otprequest
+ * @description To send OTP through email to login application
+ * @returns status message
+ ******************************************************/
+
+export const loginOTPRequest = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    throw new CustomError("Please Enter Email", 400);
+  }
+  const user = await User.findOne({ email });
+  const otp = Date.now()
+    .toString()
+    .slice(Date.now().toString().length - 6, Date.now().toString().length);
+  if (!user) throw new CustomError("User not found", 404);
+  await User.updateOne({ email }, { loginOTP: otp }, { runValidators: true });
+  const options = {
+    name: APPLICATION_NAME,
+    address: process.env.EMAIL,
+    recieverEmail: user.email,
+    subject: LOGIN_OTP_SUBJECT,
+    html: otpLoginEmail(user.name, otp),
+  };
+  const emailStatus = sendEMailToUser(options);
+  if (emailStatus) {
+    res.status(200).json({
+      success: true,
+      message: "OTP sent to your regestered email, Please Check Your Inbox",
+    });
+  } else {
+    throw new CustomError("Something went wrong!, please try again", 400);
+  }
+});
+
+/******************************************************
+ * @Login OTP Response
+ * @route http://localhost:9000/api/v1/auth/otpresponse
+ * @description To validate entered otp is valid or not
+ * @returns User Object
+ ******************************************************/
+export const loginOTPResponse = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email) {
+    throw new CustomError("Please Enter Email", 400);
+  }
+  if (!otp) {
+    throw new CustomError("Please Enter OTP", 400);
+  }
+  const user = await User.findOne({ email });
+  if (!user) throw new CustomError("User not found", 404);
+  if (user.loginOTP !== otp) {
+    console.log(user.loginOTP, otp);
+    throw new CustomError("Incorrect OTP, Please Try again", 404);
+  }
+  // delete otp
+  await User.updateOne({ email }, { $unset: { loginOTP: 1 } });
+  const token = user.getJWTToken();
+  user.password = undefined;
+  res.cookie("token", token, cookieOptions);
+  res.status(200).json({ success: true, user, token });
 });

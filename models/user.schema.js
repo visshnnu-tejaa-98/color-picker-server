@@ -32,6 +32,9 @@ const userSchema = new Schema(
     },
     forgotPasswordToken: String,
     forgotPasswordExpiry: Date,
+    loginOTP: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
