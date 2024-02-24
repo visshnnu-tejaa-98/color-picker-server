@@ -215,7 +215,6 @@ export const loginOTPResponse = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email });
   if (!user) throw new CustomError("User not found", 404);
   if (user.loginOTP !== otp) {
-    console.log(user.loginOTP, otp);
     throw new CustomError("Incorrect OTP, Please Try again", 404);
   }
   // delete otp
