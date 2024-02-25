@@ -62,7 +62,7 @@ export const getPaletteByUser = asyncHandler(async (req, res) => {
     })
     .skip(offset)
     .limit(itemsPerPage);
-  const count = await Palette.count();
+  const count = await Palette.find({ userId: req.user._id }).count();
   const pageCount = Math.ceil(count / itemsPerPage);
   res
     .status(200)

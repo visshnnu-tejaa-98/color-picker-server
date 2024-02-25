@@ -32,13 +32,17 @@ const userSchema = new Schema(
     },
     forgotPasswordToken: String,
     forgotPasswordExpiry: Date,
+    loginOTP: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
 
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+userSchema.pre("updateOne", async function (next) {
+  const data = this.getUpdate();
+  if (!data.password) return next();
+  data.password = await bcrypt.hash(data.password, 10);
   next();
 });
 
