@@ -224,3 +224,39 @@ export const loginOTPResponse = asyncHandler(async (req, res) => {
   res.cookie("token", token, cookieOptions);
   res.status(200).json({ success: true, user, token });
 });
+
+/******************************************************
+ * @Login Google Login
+ * @route http://localhost:9000/api/v1/auth/googlelogin
+ * @description TO login from googlr
+ * @returns User Object
+ ******************************************************/
+export const googleLogin = asyncHandler(async (req, res) => {
+  const { name, email, token, avatar } = req.body;
+  if (!email || !name || !token || !avatar) {
+    throw new CustomError("Please Fill all required Fields", 400);
+  }
+  let existingUser = await User.findOne({ email });
+  let isGoogleUser = true;
+  let userObj = {
+    email,
+    name,
+    token,
+    avatar,
+    isGoogleUser,
+  };
+  if (!existingUser) {
+    const user = await User.create(userObj);
+    res.status(200).json({
+      success: true,
+      user,
+      token,
+    });
+  } else {
+    res.status(200).json({
+      success: true,
+      user: existingUser,
+      token,
+    });
+  }
+});

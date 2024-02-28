@@ -32,6 +32,13 @@ const userSchema = new Schema(
     },
     forgotPasswordToken: String,
     forgotPasswordExpiry: Date,
+    isGoogleUser: {
+      type: Boolean,
+      default: false,
+    },
+    avatar: {
+      type: String,
+    },
     loginOTP: {
       type: String,
     },
