@@ -7,6 +7,7 @@ import {
   logout,
   reset,
   signup,
+  googleLogin,
 } from "../controllers/auth.controller.js";
 import { isLoggedIn } from "../middlewares/auth.middleware.js";
 
@@ -18,6 +19,7 @@ router.post("/forgot", forgot);
 router.post("/reset", reset);
 router.post("/otprequest", loginOTPRequest);
 router.post("/otpresponse", loginOTPResponse);
+router.post("/googlelogin", googleLogin);
 router.post("/logout", isLoggedIn, logout);
 
 export default router;
